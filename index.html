@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Embed Cover & Metadata into MP3 (Client-side)</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width: 800px; margin: 2rem; }
+    label { display:block; margin-top: .75rem; }
+    img { max-width: 200px; margin-top: .5rem; display: block; }
+    button { margin-top: 1rem; }
+    #status { margin-top: .75rem; color: #444; }
+  </style>
+</head>
+<body>
+  <h1>Embed Cover & Metadata into MP3</h1>
+
+  <label>MP3 file
+    <input id="mp3" type="file" accept="audio/mpeg">
+  </label>
+
+  <label>Cover image
+    <input id="cover" type="file" accept="image/*">
+    <img id="coverPreview" alt="cover preview" style="display:none">
+  </label>
+
+  <label>Title
+    <input id="title" type="text" placeholder="Song title">
+  </label>
+
+  <label>Artist
+    <input id="artist" type="text" placeholder="Artist name">
+  </label>
+
+  <label>Album
+    <input id="album" type="text" placeholder="Album name">
+  </label>
+
+  <label>Year
+    <input id="year" type="text" placeholder="2026">
+  </label>
+
+  <button id="embedBtn">Embed & Download MP3 with Metadata</button>
+
+  <div id="status"></div>
+
+  <!-- Browser ID3 Writer (UMD build). If you prefer another CDN, swap this URL. -->
+  <script src="https://unpkg.com/browser-id3-writer/dist/browser-id3-writer.min.js"></script>
+
+  <script>
+    const mp3Input = document.getElementById('mp3');
+    const coverInput = document.getElementById('cover');
+    const coverPreview = document.getElementById('coverPreview');
+    const titleInput = document.getElementById('title');
+    const artistInput = document.getElementById('artist');
+    const albumInput = document.getElementById('album');
+    const yearInput = document.getElementById('year');
+    const embedBtn = document.getElementById('embedBtn');
+    const status = document.getElementById('status');
+
+    coverInput.addEventListener('change', () => {
+      const f = coverInput.files[0];
+      if (!f) { coverPreview.style.display = 'none'; return; }
+      coverPreview.src = URL.createObjectURL(f);
+      coverPreview.style.display = 'block';
+    });
+
+    embedBtn.addEventListener('click', async () => {
+      status.textContent = '';
+      const mp3File = mp3Input.files[0];
+      const coverFile = coverInput.files[0];
+      if (!mp3File) { status.textContent = 'Please select an MP3 file.'; return; }
+      if (!coverFile) { status.textContent = 'Please select a cover image.'; return; }
+
+      embedBtn.disabled = true;
+      status.textContent = 'Reading files...';
+
+      try {
+        const [mp3Buffer, imgBuffer] = await Promise.all([mp3File.arrayBuffer(), coverFile.arrayBuffer()]);
+        status.textContent = 'Writing ID3 tags...';
+
+        // Create writer with MP3 bytes
+        const writer = new ID3Writer(new Uint8Array(mp3Buffer));
+
+        // Common text frames
+        const title = titleInput.value.trim();
+        const artist = artistInput.value.trim();
+        const album = albumInput.value.trim();
+        const year = yearInput.value.trim();
+
+        if (title) writer.setFrame('TIT2', title);   // Title/songname/content description
+        if (artist) writer.setFrame('TPE1', [artist]); // Lead performer(s)/Soloist(s)
+        if (album) writer.setFrame('TALB', album);   // Album/Movie/Show title
+        if (year) {
+          // TDRC is the preferred year/date frame in ID3v2.4; TYER for ID3v2.3
+          writer.setFrame('TDRC', year);
+          writer.setFrame('TYER', year);
+        }
+
+        // APIC: attached picture (cover)
+        writer.setFrame('APIC', {
+          type: 3, // 3 = front cover
+          data: new Uint8Array(imgBuffer),
+          description: 'Cover'
+        });
+
+        writer.addTag();
+
+        // Get a Blob and trigger download
+        const taggedBlob = writer.getBlob();
+        const url = URL.createObjectURL(taggedBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = mp3File.name.replace(/\.mp3$/i, '') + '-with-metadata.mp3';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        status.textContent = 'Done — download should start.';
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Error writing tags: ' + (err.message || err);
+      } finally {
+        embedBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
