@@ -3,73 +3,348 @@
 <head>
   <meta charset="utf-8">
   <title>Embed Cover & Metadata into MP3 (Client-side)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    body { font-family: system-ui, Arial; max-width: 800px; margin: 2rem; }
-    label { display:block; margin-top: .75rem; }
-    img { max-width: 200px; margin-top: .5rem; display: block; }
-    button { margin-top: 1rem; }
-    #status { margin-top: .75rem; color: #444; }
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#2563eb;
+      --accent-600:#1e40af;
+      --success:#16a34a;
+      --danger:#dc2626;
+      --radius:12px;
+      --shadow: 0 6px 20px rgba(15,23,42,0.08);
+      --gap:16px;
+      font-family: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:linear-gradient(180deg, #eef2ff 0%, var(--bg) 100%);
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .wrap{
+      max-width:920px;
+      margin:36px auto;
+      padding:20px;
+    }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:24px;
+      display:grid;
+      grid-template-columns: 1fr 320px;
+      gap:var(--gap);
+      align-items:start;
+    }
+
+    @media (max-width:880px){
+      .card { grid-template-columns: 1fr; }
+    }
+
+    header h1{
+      margin:0 0 6px 0;
+      font-size:20px;
+      line-height:1.15;
+    }
+    header p { margin:0; color:var(--muted); font-size:13px; }
+
+    form{
+      display:grid;
+      gap:12px;
+    }
+
+    label {
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .field {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    input[type="text"], input[type="file"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid #e6edf3;
+      background: #fbfdff;
+      font-size:14px;
+      color: #0f172a;
+      box-sizing:border-box;
+    }
+
+    input[type="file"]{
+      padding:6px 10px;
+    }
+
+    .inputs-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width:560px){
+      .inputs-grid{ grid-template-columns: 1fr; }
+    }
+
+    .cover-box{
+      border-radius:10px;
+      padding:12px;
+      border:1px dashed #e6edf3;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:140px;
+      background:linear-gradient(180deg,#ffffff 0%, #fbfdff 100%);
+      position:relative;
+      overflow:hidden;
+    }
+
+    .cover-box img{
+      max-width:100%;
+      max-height:220px;
+      border-radius:8px;
+      display:block;
+      object-fit:cover;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+    }
+
+    .meta-preview{
+      margin-top:10px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    audio{
+      width:100%;
+      margin-top:8px;
+      outline:none;
+    }
+
+    .controls{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-top:10px;
+      flex-wrap:wrap;
+    }
+
+    button{
+      background:var(--accent);
+      color:white;
+      border:0;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow: 0 6px 14px rgba(37,99,235,0.12);
+      transition:transform .08s ease, background .12s ease;
+    }
+    button:hover{ transform:translateY(-1px); background:var(--accent-600); }
+    button:disabled{
+      opacity:.6;
+      transform:none;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+
+    .status{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .card-footer{
+      grid-column: 1 / -1;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:6px;
+      border-top:1px dashed #eef2ff;
+      padding-top:12px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .note {
+      font-size:12px;
+      color:#475569;
+      background:linear-gradient(180deg,#fbfdff,#fff);
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #f1f5f9;
+    }
+
+    .muted-small{ color:var(--muted); font-size:13px; }
+
+    /* focus styles */
+    input:focus, button:focus { outline: 3px solid rgba(37,99,235,0.12); outline-offset:2px; }
   </style>
 </head>
 <body>
-  <h1>Embed Cover & Metadata into MP3</h1>
+  <div class="wrap">
+    <div class="card" role="region" aria-label="Embed cover and metadata">
+      <div>
+        <header>
+          <h1>Embed Cover & Metadata into MP3</h1>
+          <p class="muted-small">Select an MP3 and a cover image, optionally fill metadata, then embed and download — fully client-side.</p>
+        </header>
 
-  <label>MP3 file
-    <input id="mp3" type="file" accept="audio/mpeg">
-  </label>
+        <form id="metaForm" autocomplete="off" novalidate>
+          <label>MP3 file
+            <div class="field">
+              <input id="mp3" type="file" accept="audio/mpeg" aria-label="MP3 file">
+            </div>
+          </label>
 
-  <label>Cover image
-    <input id="cover" type="file" accept="image/*">
-    <img id="coverPreview" alt="cover preview" style="display:none">
-  </label>
+          <label>Cover image
+            <div class="field">
+              <input id="cover" type="file" accept="image/*" aria-label="Cover image">
+            </div>
+            <div id="coverPreviewWrap" class="meta-preview" style="display:none">
+              <strong>Preview</strong>
+              <div class="cover-box" style="margin-top:8px">
+                <img id="coverPreview" alt="cover preview">
+              </div>
+            </div>
+          </label>
 
-  <label>Title
-    <input id="title" type="text" placeholder="Song title">
-  </label>
+          <div class="inputs-grid" aria-hidden="false">
+            <div>
+              <label>Title
+                <input id="title" type="text" placeholder="Song title" aria-label="Title">
+              </label>
+            </div>
 
-  <label>Artist
-    <input id="artist" type="text" placeholder="Artist name">
-  </label>
+            <div>
+              <label>Artist
+                <input id="artist" type="text" placeholder="Artist name" aria-label="Artist">
+              </label>
+            </div>
 
-  <label>Album
-    <input id="album" type="text" placeholder="Album name">
-  </label>
+            <div>
+              <label>Album
+                <input id="album" type="text" placeholder="Album name" aria-label="Album">
+              </label>
+            </div>
 
-  <label>Year
-    <input id="year" type="text" placeholder="2026">
-  </label>
+            <div>
+              <label>Year
+                <input id="year" type="text" placeholder="2026" aria-label="Year">
+              </label>
+            </div>
+          </div>
 
-  <button id="embedBtn">Embed & Download MP3 with Metadata</button>
+          <div class="controls">
+            <button id="embedBtn" type="button">Embed & Download MP3 with Metadata</button>
+            <div class="status" id="status">No file selected.</div>
+          </div>
 
-  <div id="status"></div>
+          <div style="margin-top:8px">
+            <audio id="player" controls aria-label="MP3 preview" style="display:none"></audio>
+            <div id="metaSummary" class="meta-preview" style="display:none"></div>
+          </div>
+        </form>
+      </div>
 
-  <!-- Browser ID3 Writer (UMD build). If you prefer another CDN, swap this URL. -->
+      <aside class="side" aria-hidden="false">
+        <div class="note">
+          Tips:
+          <ul style="margin:8px 0 0 18px; padding:0;">
+            <li>Common tags added: Title, Artist, Album, Year, and front cover (APIC).</li>
+            <li>Works fully in the browser — no upload required.</li>
+            <li>If the download doesn't start, check your popup/download settings.</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong class="muted-small">Quick preview</strong>
+          <div id="quickPreview" style="margin-top:8px; color:var(--muted); font-size:13px">
+            Nothing loaded.
+          </div>
+        </div>
+      </aside>
+
+      <div class="card-footer">
+        <div>Client-side ID3 writer: <span class="muted-small">browser-id3-writer</span></div>
+        <div class="muted-small">All editing happens locally in your browser</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browser ID3 Writer (UMD build). -->
   <script src="https://unpkg.com/browser-id3-writer/dist/browser-id3-writer.min.js"></script>
 
   <script>
     const mp3Input = document.getElementById('mp3');
     const coverInput = document.getElementById('cover');
     const coverPreview = document.getElementById('coverPreview');
+    const coverPreviewWrap = document.getElementById('coverPreviewWrap');
     const titleInput = document.getElementById('title');
     const artistInput = document.getElementById('artist');
     const albumInput = document.getElementById('album');
     const yearInput = document.getElementById('year');
     const embedBtn = document.getElementById('embedBtn');
     const status = document.getElementById('status');
+    const player = document.getElementById('player');
+    const quickPreview = document.getElementById('quickPreview');
+    const metaSummary = document.getElementById('metaSummary');
+
+    function updateQuickPreview() {
+      const mp3 = mp3Input.files[0];
+      const cover = coverInput.files[0];
+      quickPreview.textContent = mp3 ? mp3.name + (cover ? ' • cover ready' : ' • no cover') : 'Nothing loaded.';
+    }
 
     coverInput.addEventListener('change', () => {
       const f = coverInput.files[0];
-      if (!f) { coverPreview.style.display = 'none'; return; }
+      if (!f) { coverPreviewWrap.style.display = 'none'; coverPreview.src = ''; updateQuickPreview(); return; }
       coverPreview.src = URL.createObjectURL(f);
-      coverPreview.style.display = 'block';
+      coverPreview.onload = () => URL.revokeObjectURL(coverPreview.src);
+      coverPreviewWrap.style.display = 'block';
+      updateQuickPreview();
+    });
+
+    mp3Input.addEventListener('change', () => {
+      const file = mp3Input.files[0];
+      if (!file) {
+        player.style.display = 'none';
+        status.textContent = 'No file selected.';
+        metaSummary.style.display = 'none';
+        updateQuickPreview();
+        return;
+      }
+      player.src = URL.createObjectURL(file);
+      player.style.display = 'block';
+      status.textContent = `Selected: ${file.name} (${Math.round(file.size/1024)} KB)`;
+      metaSummary.style.display = 'block';
+      metaSummary.innerHTML = `<strong>Ready to tag:</strong><br>${file.name}`;
+      updateQuickPreview();
     });
 
     embedBtn.addEventListener('click', async () => {
+      status.style.color = '';
       status.textContent = '';
       const mp3File = mp3Input.files[0];
       const coverFile = coverInput.files[0];
-      if (!mp3File) { status.textContent = 'Please select an MP3 file.'; return; }
-      if (!coverFile) { status.textContent = 'Please select a cover image.'; return; }
+      if (!mp3File) { status.textContent = 'Please select an MP3 file.'; status.style.color = 'var(--danger)'; return; }
+      if (!coverFile) { status.textContent = 'Please select a cover image.'; status.style.color = 'var(--danger)'; return; }
 
       embedBtn.disabled = true;
       status.textContent = 'Reading files...';
@@ -78,34 +353,26 @@
         const [mp3Buffer, imgBuffer] = await Promise.all([mp3File.arrayBuffer(), coverFile.arrayBuffer()]);
         status.textContent = 'Writing ID3 tags...';
 
-        // Create writer with MP3 bytes
         const writer = new ID3Writer(new Uint8Array(mp3Buffer));
 
-        // Common text frames
         const title = titleInput.value.trim();
         const artist = artistInput.value.trim();
         const album = albumInput.value.trim();
         const year = yearInput.value.trim();
 
-        if (title) writer.setFrame('TIT2', title);   // Title/songname/content description
-        if (artist) writer.setFrame('TPE1', [artist]); // Lead performer(s)/Soloist(s)
-        if (album) writer.setFrame('TALB', album);   // Album/Movie/Show title
-        if (year) {
-          // TDRC is the preferred year/date frame in ID3v2.4; TYER for ID3v2.3
-          writer.setFrame('TDRC', year);
-          writer.setFrame('TYER', year);
-        }
+        if (title) writer.setFrame('TIT2', title);
+        if (artist) writer.setFrame('TPE1', [artist]);
+        if (album) writer.setFrame('TALB', album);
+        if (year) { writer.setFrame('TDRC', year); writer.setFrame('TYER', year); }
 
-        // APIC: attached picture (cover)
         writer.setFrame('APIC', {
-          type: 3, // 3 = front cover
+          type: 3,
           data: new Uint8Array(imgBuffer),
           description: 'Cover'
         });
 
         writer.addTag();
 
-        // Get a Blob and trigger download
         const taggedBlob = writer.getBlob();
         const url = URL.createObjectURL(taggedBlob);
         const a = document.createElement('a');
@@ -116,10 +383,12 @@
         a.remove();
         URL.revokeObjectURL(url);
 
-        status.textContent = 'Done — download should start.';
+        status.textContent = 'Done — download started.';
+        status.style.color = 'var(--success)';
       } catch (err) {
         console.error(err);
         status.textContent = 'Error writing tags: ' + (err.message || err);
+        status.style.color = 'var(--danger)';
       } finally {
         embedBtn.disabled = false;
       }
